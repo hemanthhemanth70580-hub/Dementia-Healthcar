@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Dementia Medicine Reminder System</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Poppins',sans-serif;
+}
+
+body{
+    min-height:100vh;
+    background:linear-gradient(135deg,#667eea,#764ba2);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding:20px;
+}
+
+.container{
+    width:100%;
+    max-width:1000px;
+    background:white;
+    border-radius:25px;
+    overflow:hidden;
+    box-shadow:0 15px 40px rgba(0,0,0,0.2);
+    display:grid;
+    grid-template-columns:1fr 1fr;
+}
+
+.left{
+    background:linear-gradient(135deg,#4facfe,#00f2fe);
+    padding:40px;
+    color:white;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+}
+
+.left h1{
+    font-size:42px;
+    margin-bottom:20px;
+}
+
+.left p{
+    font-size:18px;
+    line-height:1.7;
+}
+
+.clock{
+    margin-top:30px;
+    font-size:32px;
+    font-weight:bold;
+    text-align:center;
+    background:rgba(255,255,255,0.2);
+    padding:15px;
+    border-radius:15px;
+}
+
+.right{
+    padding:40px;
+}
+
+.form-title{
+    font-size:30px;
+    margin-bottom:25px;
+    text-align:center;
+    color:#333;
+}
+
+form{
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+}
+
+input{
+    padding:15px;
+    border:none;
+    border-radius:12px;
+    background:#f2f5f9;
+    font-size:16px;
+    outline:none;
+}
+
+input:focus{
+    border:2px solid #4facfe;
+}
+
+button{
+    padding:15px;
+    border:none;
+    border-radius:12px;
+    background:linear-gradient(135deg,#667eea,#764ba2);
+    color:white;
+    font-size:18px;
+    font-weight:600;
+    cursor:pointer;
+    transition:0.3s;
+}
+
+button:hover{
+    transform:scale(1.03);
+}
+
+.patient-card{
+    margin-top:25px;
+    background:#f7fbff;
+    border-radius:18px;
+    padding:20px;
+    border-left:8px solid #4facfe;
+}
+
+.patient-card h2{
+    color:#333;
+    margin-bottom:15px;
+}
+
+.patient-card p{
+    margin-bottom:10px;
+    color:#555;
+}
+
+.status{
+    margin-top:15px;
+    padding:15px;
+    border-radius:12px;
+    text-align:center;
+    font-weight:600;
+}
+
+.taken{
+    background:#d4edda;
+    color:#155724;
+}
+
+.not-taken{
+    background:#f8d7da;
+    color:#721c24;
+}
+
+.alert-box{
+    margin-top:20px;
+    background:#ffe5e5;
+    color:red;
+    padding:15px;
+    border-radius:12px;
+    text-align:center;
+    font-weight:bold;
+    animation:blink 1s infinite;
+    display:none;
+}
+
+@keyframes blink{
+
+    0%{opacity:1;}
+    50%{opacity:0.4;}
+    100%{opacity:1;}
+
+}
+
+@media(max-width:900px){
+
+.container{
+    grid-template-columns:1fr;
+}
+
+.left{
+    text-align:center;
+}
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<!-- LEFT SECTION -->
+
+<div class="left">
+
+<h1>Dementia Care Assistant</h1>
+
+<p>
+This smart medicine reminder system helps dementia patients take medicines on time.
+It reminds patients only once at the specified time, plays an alarm,
+asks whether medicine was taken, and sends SMS alerts to caregivers if not taken.
+</p>
+
+<div class="clock" id="clock"></div>
+
+<div class="alert-box" id="alertBox">
+🚨 MEDICINE REMINDER ACTIVE 🚨
+</div>
+
+</div>
+
+<!-- RIGHT SECTION -->
+
+<div class="right">
+
+<h2 class="form-title">Patient Details</h2>
+
+<form id="patientForm">
+
+<input type="text" id="name" placeholder="Patient Name" required>
+
+<input type="number" id="age" placeholder="Patient Age" required>
+
+<input type="text" id="medicine" placeholder="Medicine Name" required>
+
+<input type="time" id="time" required>
+
+<input type="text" id="phone" placeholder="Caregiver Phone Number (+91xxxxxxxxxx)" required>
+
+<button type="submit">
+Save Reminder
+</button>
+
+</form>
+
+<div id="patientData"></div>
+
+</div>
+
+</div>
+
+<script>
+
+// LIVE CLOCK
+
+function updateClock(){
+
+    const now = new Date();
+
+    let hours = String(now.getHours()).padStart(2,'0');
+    let minutes = String(now.getMinutes()).padStart(2,'0');
+    let seconds = String(now.getSeconds()).padStart(2,'0');
+
+    document.getElementById("clock").innerHTML =
+    hours + ":" + minutes + ":" + seconds;
+}
+
+setInterval(updateClock,1000);
+
+updateClock();
+
+// ALARM SOUND
+
+const alarmSound = new Audio(
+"https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3"
+);
+
+alarmSound.loop = true;
+
+// DESKTOP NOTIFICATION
+
+if(Notification.permission !== "granted"){
+
+    Notification.requestPermission();
+
+}
+
+// VARIABLES
+
+let patient = null;
+
+let reminderShown = false;
+
+// FORM SUBMIT
+
+document.getElementById("patientForm")
+.addEventListener("submit",function(e){
+
+    e.preventDefault();
+
+    patient = {
+
+        name:document.getElementById("name").value,
+
+        age:document.getElementById("age").value,
+
+        medicine:document.getElementById("medicine").value,
+
+        time:document.getElementById("time").value,
+
+        phone:document.getElementById("phone").value,
+
+        taken:false
+
+    };
+
+    reminderShown = false;
+
+    displayPatient();
+
+    alert("Reminder Saved Successfully!");
+
+});
+
+// DISPLAY PATIENT DETAILS
+
+function displayPatient(){
+
+    if(!patient) return;
+
+    document.getElementById("patientData").innerHTML = `
+
+    <div class="patient-card">
+
+        <h2>${patient.name}</h2>
+
+        <p><strong>Age:</strong> ${patient.age}</p>
+
+        <p><strong>Medicine:</strong> ${patient.medicine}</p>
+
+        <p><strong>Reminder Time:</strong> ${patient.time}</p>
+
+        <p><strong>Caregiver:</strong> ${patient.phone}</p>
+
+        <div id="statusBox"></div>
+
+    </div>
+
+    `;
+}
+
+// CHECK TIME EVERY SECOND
+
+setInterval(()=>{
+
+    if(!patient || reminderShown) return;
+
+    const now = new Date();
+
+    const currentTime =
+        String(now.getHours()).padStart(2,'0')
+        + ":"
+        +
+        String(now.getMinutes()).padStart(2,'0');
+
+    if(currentTime === patient.time){
+
+        reminderShown = true;
+
+        // SHOW ALERT BOX
+
+        document.getElementById("alertBox").style.display = "block";
+
+        // PLAY SOUND
+
+        alarmSound.play();
+
+        // DESKTOP NOTIFICATION
+
+        if(Notification.permission === "granted"){
+
+            new Notification("Medicine Reminder",{
+
+                body:
+                patient.name +
+                " needs to take " +
+                patient.medicine,
+
+                icon:
+                "https://cdn-icons-png.flaticon.com/512/2966/2966486.png"
+
+            });
+
+        }
+
+        // ASK ONLY ONCE
+
+        setTimeout(()=>{
+
+            const taken = confirm(
+
+                patient.name +
+                ", have you taken your medicine?"
+            );
+
+            // STOP SOUND
+
+            alarmSound.pause();
+
+            alarmSound.currentTime = 0;
+
+            document.getElementById("alertBox").style.display = "none";
+
+            patient.taken = taken;
+
+            updateStatus();
+
+            // SEND SMS IF NOT TAKEN
+
+            if(!taken){
+
+                sendSMS();
+
+            }
+
+        },1000);
+
+    }
+
+},1000);
+
+// UPDATE STATUS
+
+function updateStatus(){
+
+    const statusBox = document.getElementById("statusBox");
+
+    if(patient.taken){
+
+        statusBox.innerHTML = `
+
+        <div class="status taken">
+        ✅ Medicine Taken Successfully
+        </div>
+
+        `;
+
+    }else{
+
+        statusBox.innerHTML = `
+
+        <div class="status not-taken">
+        ❌ Medicine NOT Taken
+        </div>
+
+        `;
+
+    }
+
+}
+
+// SEND SMS FUNCTION
+
+function sendSMS(){
+
+    /*
+    IMPORTANT:
+
+    Replace these values with your Twilio details.
+
+    */
+
+    const accountSid = "YOUR_ACCOUNT_SID";
+
+    const authToken = "YOUR_AUTH_TOKEN";
+
+    const twilioNumber = "YOUR_TWILIO_PHONE_NUMBER";
+
+    const message =
+    patient.name +
+    " did NOT take medicine: " +
+    patient.medicine;
+
+    fetch(
+    "https://api.twilio.com/2010-04-01/Accounts/" +
+    accountSid +
+    "/Messages.json",
+    {
+
+        method:"POST",
+
+        headers:{
+
+            "Authorization":
+            "Basic " +
+            btoa(accountSid + ":" + authToken),
+
+            "Content-Type":
+            "application/x-www-form-urlencoded"
+
+        },
+
+        body:
+        new URLSearchParams({
+
+            From:twilioNumber,
+
+            To:patient.phone,
+
+            Body:message
+
+        })
+
+    })
+
+    .then(response=>response.json())
+
+    .then(data=>{
+
+        console.log(data);
+
+        alert("SMS Alert Sent to Caregiver");
+
+    })
+
+    .catch(error=>{
+
+        console.log(error);
+
+        alert("SMS Sending Failed");
+
+    });
+
+}
+
+</script>
+
+</body>
+</html>
